@@ -1,80 +1,73 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <list>
 #include <fstream>
 #include <algorithm>
+#include <climits>
+#include "readbuf.hpp"
 
 using namespace std;
 
-void merge(vector<string> file_names, string output){
-	vector<std::ifstream> files; 
-	for(string name: file_names)
-		files.push_back(std::ifstream(name, std::ios::binary));
 
 
-	std::ofstream o(output,std::ios::binary);
-	
+void merge(std::vector<std::string> file_names, std::string output){
+	size_t buf_size = 750 * 1024 * 1024 / file_names.size();
+	int read_count = 0, read_count_prev = 0;
+	vector<readbuf> files;
+	list<int> readed;
+	for(string name:file_names) 
+		files.push_back(readbuf(name, buf_size));
+	ofstream out(output,std::ios::binary);
 
-	vector<bool> toRead(files.size(), true);
-	vector<bool> upd(files.size(), false);
-	vector<int> add;
-	vector<int> vals(files.size());
-	long long count = 0;
-	size_t prev_t;
-	bool read_i = true;
-	
-	int c_prev = 0;
+	vector<int> last(files.size(), INT_MIN);
+	vector<int> toAdd;
 
-	for(int i = 0; i < files.size(); i++){	
-		vals[i] = 0;
-		bool ok = (bool)files[i].read(reinterpret_cast<char*>(&vals[i]), sizeof(int));
-		if(ok)add.push_back(vals[i]);
+	for(int main_file_num = 0; main_file_num < files.size(); main_file_num++){	
+		int main_value = 0;
+		while(files[main_file_num].read(main_value)){
+			//cout << "while enter" << endl;
+			/*if(read_count - read_count_prev > 10)
+			{
+				read_count_prev = read_count;
+				cout << read_count  << " readed  " << readed.size() << "  " << toAdd.size() << endl;
+			}*/
 
-		while(files[i]){
-			read_i = true;
-			for(int j = i + 1; j < files.size(); j++){
+			last[main_file_num] = main_value;
+			readed.push_back(main_value);
+			for(int file_num = main_file_num + 1; file_num < files.size(); file_num++){
+				int value = 0;
+				
+				while(last[file_num] <= main_value && files[file_num].read(value)){
+					//cout << last[file_num] << "  "  << (last[file_num] <= main_value) << endl;
+					readed.push_back(value);
+					last[file_num] = value;
+					read_count++;
+					if(value > main_value) break;
+				}
+			}
 			
-				if(toRead[j] && files[j]){
-					read_i = false;
-					vals[j] = 0;
-					bool ok = (bool)files[j].read(reinterpret_cast<char*>(&vals[j]), sizeof(int));
-					if(vals[j] > vals[i] && ok)
-						toRead[j] = false;
-					else if(ok)
-						add.push_back(vals[j]);
-					
-				}
-							
-			}
-			if(read_i){
-				
-				sort(add.begin(), add.end());
-				o.write(reinterpret_cast<const char*>(add.data()), add.size() * sizeof(int));
-				count += add.size();
+			//cout << "before "<< readed.size() << endl;
+			readed.remove_if([&toAdd, main_value](auto& i) {
+				bool ok = (i <= main_value);
+				if(ok) toAdd.push_back(i);
+				return ok; 
+			});
+			//cout << "after "<< readed.size() << endl;
+			sort(toAdd.begin(), toAdd.end());
+			out.write(reinterpret_cast<const char*>(toAdd.data()), toAdd.size() * sizeof(int));
+			
+			
+			toAdd.clear();
+			//break;
+			int main_value = 0;
 
-				add.clear();
-				
-				vals[i] = 0;					
-				bool ok = (bool)files[i].read(reinterpret_cast<char*>(&vals[i]), sizeof(int));
-				if(ok){
-					add.push_back(vals[i]);
-				}
-				for(int k = i + 1; k < files.size(); k++){
-					if(!toRead[k] && vals[k] <= vals[i]){
-						toRead[k] = true;
-						add.push_back(vals[k]);
-					}	
-				}	
-				read_i = false;
-			}
 		}
 	}
-	for(int k = 0; k < files.size(); k++) if(!toRead[k]) add.push_back(vals[k]);
-		
-	sort(add.begin(), add.end());
-	o.write(reinterpret_cast<const char*>(add.data()), add.size() * sizeof(int));
+	//cout << read_count << "res  " << readed.size() << endl;
+	vector<int> v{ readed.begin(), readed.end()};
+
+	sort(v.begin(), v.end());
+	out.write(reinterpret_cast<const char*>(v.data()), v.size() * sizeof(int));
 
 }
-
-
-

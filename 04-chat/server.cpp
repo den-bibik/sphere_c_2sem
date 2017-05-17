@@ -125,7 +125,7 @@ void Server::run(){
 			new_client(events[i]);
 		else{
 			memset(msgBuf, 0, sizeof(msgBufSize));
-			int received = recv(events[i].data.fd, msgBuf, sizeof(msgBuf), MSG_NOSIGNAL);
+			int received = recv(events[i].data.fd, msgBuf, msgBufSize, MSG_NOSIGNAL);
 			if (received <= 0) {
 				shutdown(events[i].data.fd, SHUT_RDWR);
                 close(events[i].data.fd);

@@ -1,6 +1,6 @@
 all: chatsrv client
 chatsrv: server.cpp
-	g++ -std=c++11 -Wall -Werror -o chatsrv server.cpp
+	g++ -std=c++11 -Wall -Werror -o server server.cpp
 client: client.cpp
 	g++ -std=c++11 -Wall -Werror -o client client.cpp
 clean:

@@ -1,8 +1,11 @@
-all: chatsrv client
-chatsrv: server.cpp
-	g++ -std=c++11 -Wall -Werror -o server server.cpp
-client: client.cpp
-	g++ -std=c++11 -Wall -Werror -o client client.cpp
+
+CXX=g++
+CXXFLAGS=--std=c++11
+
+all: server
+
+server: server.cpp Client.cpp
+	$(CXX) $(CXXFLAGS) -o server server.cpp Client.cpp
+
 clean:
-	rm -rf chatsrv
-	rm -rf client
+	rm server
